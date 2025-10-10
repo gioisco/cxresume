@@ -73,7 +73,7 @@ export async function pickSessionSplitTUI(root, presetList = null, options = {})
     height: 1,
     width: '100%-2',
     tags: false,
-    content: chalk.gray('ccresume-like mode: ') +
+    content: chalk.gray('Usage: ') +
       chalk.yellow('←/→') + ' pages • ' +
       chalk.yellow('↑/↓') + ' select • ' +
       chalk.yellow('j/k') + ' scroll • ' +
@@ -175,7 +175,7 @@ export async function pickSessionSplitTUI(root, presetList = null, options = {})
     const totalPages = Math.max(1, Math.ceil(visibleFiles.length / ITEMS_PER_PAGE));
     const info = `Page ${currentPage + 1}/${totalPages} | Showing ${pageItems.length}/${visibleFiles.length}`;
     const opts = editedArgs ? ` | Options: ${editedArgs}` : '';
-    header.setContent(`ccresume-like mode: ←/→ pages • ↑/↓ select • j/k scroll • Enter resume • n new • - edit options • c copy ID • f full • q quit${opts} | ${info}`);
+    header.setContent(`Usage: ←/→ pages • ↑/↓ select • j/k scroll • Enter resume • n new • - edit options • c copy ID • f full • q quit${opts} | ${info}`);
   }
 
   function refreshListRow(i) {
