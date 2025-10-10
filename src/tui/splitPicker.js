@@ -4,33 +4,79 @@ import dayjs from 'dayjs';
 import path from 'node:path';
 import clipboard from 'clipboardy';
 import chalk from 'chalk';
+import stringWidth from 'string-width';
 import { listSessionFiles } from '../utils/sessionFinder.js';
 import { parseSessionFile } from '../utils/parser.js';
 import { extractSessionMetaQuick } from '../utils/metaQuick.js';
-import { selectRecentDialogMessages, formatPreviewLines } from '../utils/preview.js';
+import { selectRecentDialogMessages, formatPreviewLines, formatPreviewBlocks } from '../utils/preview.js';
 
 function safeString(s) { return typeof s === 'string' ? s : ''; }
 
-function formatTopRow(file, meta) {
-  const date = meta?.startTime ? dayjs(meta.startTime).format('YYYY-MM-DD HH:mm:ss') : dayjs(new Date(file.mtime)).format('YYYY-MM-DD HH:mm:ss');
-  const cwd = meta?.cwd || '';
+// Terminal-like theme colors inspired by codex_recovery_1.html
+const THEME = {
+  gray: '#808080',
+  green: '#5af78e',
+  yellow: '#f3f99d',
+  orange: '#ff9500',
+  red: '#ff6ac1',
+  purple: '#bf5af2',
+  blue: '#6ac8ff',
+  cyan: '#5fbeaa',
+};
+
+function formatRelativeAge(date) {
+  try {
+    const d = typeof date === 'string' || typeof date === 'number' ? new Date(date) : date;
+    const now = Date.now();
+    const diff = Math.max(0, now - d.getTime());
+    const s = Math.floor(diff / 1000);
+    if (s < 60) return `${s}s ago`;
+    const m = Math.floor(s / 60);
+    if (m < 60) return `${m}m ago`;
+    const h = Math.floor(m / 60);
+    if (h < 24) return `${h}h ago`;
+    const days = Math.floor(h / 24);
+    if (days < 7) return `${days}d ago`;
+    const weeks = Math.floor(days / 7);
+    if (weeks < 4) return `${weeks}w ago`;
+    const months = Math.floor(days / 30);
+    if (months < 12) return `${months}mo ago`;
+    const years = Math.floor(days / 365);
+    return `${years}y ago`;
+  } catch {
+    return '';
+  }
+}
+
+function getListInnerWidth(container) {
+  try {
+    const w = typeof container.width === 'number' ? container.width : (parseInt(container.width, 10) || 40);
+    // border 2 + list left/right padding approx 2
+    return Math.max(10, w - 4);
+  } catch { return 40; }
+}
+
+function formatListRow(file, meta, innerWidth) {
   const id = meta?.id || path.basename(file.path);
-  const left = chalk.gray(date);
-  const mid = chalk.cyan(cwd || '-');
-  const right = chalk.magenta(id);
-  return `${left} | ${mid} | ${right}`;
+  const ageSrc = meta?.startTime ? new Date(meta.startTime) : new Date(file.mtime);
+  const age = formatRelativeAge(ageSrc);
+  const left = chalk.hex(THEME.orange)(id);
+  const right = chalk.hex(THEME.gray)(age);
+  const rawLeft = id;
+  const rawRight = age;
+  const pad = Math.max(1, innerWidth - rawLeft.length - rawRight.length);
+  return `${left}${' '.repeat(pad)}${right}`;
 }
 
 // meta quick extraction moved to utils/metaQuick
 
-function buildDialogPreview(messages, { maxItems = 20, hide = [] } = {}) {
-  const items = selectRecentDialogMessages(messages, { limit: maxItems }).filter(it => {
+function buildDialogPreviewBlocks(messages, { hide = [], wrapWidth } = {}) {
+  const items = selectRecentDialogMessages(messages, { limit: Number.POSITIVE_INFINITY }).filter(it => {
     if (it.role === 'user' && hide.includes('user')) return false;
     if (it.role === 'assistant' && hide.includes('assistant')) return false;
     return true;
   }).map(it => ({ ...it, text: safeString(it.text).replace(/\r/g, '') }));
-  const lines = formatPreviewLines(items, { color: true, chalkLib: chalk });
-  return lines.join('\n');
+  return formatPreviewBlocks(items, { chalkLib: chalk, wrapWidth });
 }
 
 export async function pickSessionSplitTUI(root, presetList = null, options = {}) {
@@ -51,88 +97,248 @@ export async function pickSessionSplitTUI(root, presetList = null, options = {})
     screen = blessed.screen({ smartCSR: true, warnings: false, title: 'cxresume - Sessions / Preview', fullUnicode: true });
   }
   const gap = 1;
-  const totalH = screen.height || 40;
-  let topH = Math.max(8, Math.floor(totalH * 0.35));
-  const bottomTop = topH + gap;
-  const bottomH = Math.max(6, totalH - bottomTop);
+  let totalW = screen.width || 100;
+  let leftW = Math.max(30, Math.floor(totalW * 0.35));
 
-  const topBox = blessed.box({
+  const leftBox = blessed.box({
     top: 0,
     left: 0,
-    width: '100%',
-    height: topH,
+    width: leftW,
+    height: '100%',
     border: { type: 'line' },
-    borderColor: 'cyan',
-    label: '  Sessions  ',
+    borderColor: 'gray',
+    label: `  ${chalk.hex(THEME.green)('Recent Sessions')}  `,
   });
 
   const header = blessed.box({
-    parent: topBox,
+    parent: leftBox,
     top: 0,
     left: 1,
     height: 1,
     width: '100%-2',
     tags: false,
-    content: chalk.gray('Usage: ') +
-      chalk.yellow('←/→') + ' pages • ' +
-      chalk.yellow('↑/↓') + ' select • ' +
-      chalk.yellow('j/k') + ' scroll • ' +
-      chalk.yellow('Enter') + ' resume • ' +
-      chalk.yellow('n') + ' new • ' +
-      chalk.yellow('-') + ' edit options • ' +
-      chalk.yellow('c') + ' copy ID • ' +
-      chalk.yellow('f') + ' full • ' +
-      chalk.yellow('q') + ' quit'
+    content: chalk.hex(THEME.gray)('Usage: ') +
+      chalk.hex(THEME.yellow)('↑/↓') + ' navigate ' + chalk.hex(THEME.gray)('• ') +
+      chalk.hex(THEME.yellow)('Enter') + ' resume ' + chalk.hex(THEME.gray)('• ') +
+      chalk.hex(THEME.yellow)('←/→') + ' pages ' + chalk.hex(THEME.gray)('• ') +
+      chalk.hex(THEME.yellow)('j/k') + ' scroll ' + chalk.hex(THEME.gray)('• ') +
+      chalk.hex(THEME.yellow)('n') + ' new ' + chalk.hex(THEME.gray)('• ') +
+      chalk.hex(THEME.yellow)('-') + ' edit options ' + chalk.hex(THEME.gray)('• ') +
+      chalk.hex(THEME.yellow)('c') + ' copy ID ' + chalk.hex(THEME.gray)('• ') +
+      chalk.hex(THEME.yellow)('f') + ' full ' + chalk.hex(THEME.gray)('• ') +
+      chalk.hex(THEME.yellow)('q') + ' quit'
   });
 
-  const list = blessed.list({
-    parent: topBox,
+  const leftScroll = blessed.box({
+    parent: leftBox,
     top: 2,
     left: 1,
     width: '100%-2',
     height: '100%-3',
-    keys: true,
-    vi: false,
+    keys: false,
     mouse: true,
-    style: { selected: { inverse: true } },
-    scrollbar: { ch: ' ', track: { bg: 'gray' }, style: { bg: 'white' } },
-    items: [],
+    vi: false,
+    alwaysScroll: true,
+    scrollable: true,
+    scrollbar: { ch: ' ', track: { bg: 'gray' }, style: { bg: 'gray' } },
   });
 
-  const bottomBox = blessed.box({
-    top: bottomTop,
-    left: 0,
-    width: '100%',
-    height: bottomH,
+  const rightBox = blessed.box({
+    top: 0,
+    left: leftW + gap,
+    width: `100%-${leftW + gap}`,
+    height: '100%',
     border: { type: 'line' },
-    borderColor: 'green',
-    label: '  Dialog Preview (recent, chronological)  ',
+    borderColor: 'gray',
+    label: `  ${chalk.hex(THEME.green)('Conversation Preview')}  `,
+  });
+
+  const infoBox = blessed.box({
+    parent: rightBox,
+    top: 0,
+    left: 1,
+    width: '100%-2',
+    height: 1,
+    tags: false,
+    content: '',
   });
 
   const preview = blessed.box({
-    parent: bottomBox,
-    top: 1,
+    parent: rightBox,
+    top: 2,
     left: 1,
     width: '100%-2',
-    height: '100%-2',
+    height: '100%-3',
     tags: false,
-    wrap: true,
+    wrap: false,
     keys: true,
     vi: true,
     mouse: true,
     alwaysScroll: true,
     scrollable: true,
-    scrollbar: { ch: ' ', track: { bg: 'gray' }, style: { bg: 'white' } },
+    scrollbar: { ch: ' ', track: { bg: 'gray' }, style: { bg: 'gray' } },
     content: '',
   });
 
-  screen.append(topBox);
-  screen.append(bottomBox);
+  screen.append(leftBox);
+  screen.append(rightBox);
 
   const metaCache = new Map();
   const previewCache = new Map();
   let destroyed = false;
   let fullView = false;
+  const ITEM_HEIGHT = 3;
+  const ITEM_GAP = 1; // visual spacing between blocks
+  let selectedIndex = 0;
+  const itemBoxes = [];
+  const msgSummaryCache = new Map(); // path -> { count, lastRole }
+
+  function renderItemContent(f, meta) {
+    const id = meta?.id || path.basename(f.path);
+    const ageSrc = meta?.startTime ? new Date(meta.startTime) : new Date(f.mtime);
+    const age = formatRelativeAge(ageSrc);
+    const cwd = meta?.cwd || '';
+    const sum = msgSummaryCache.get(f.path);
+    const messages = typeof sum?.count === 'number' ? String(sum.count) : '-';
+    const lastRole = sum?.lastRole || '-';
+    const lastRoleColored = lastRole === 'Assistant' ? chalk.hex(THEME.green)(lastRole)
+      : lastRole === 'User' ? chalk.hex(THEME.red)(lastRole)
+      : chalk.hex(THEME.gray)(lastRole);
+
+    const line1Left = chalk.hex(THEME.orange)(id);
+    const line1Right = chalk.hex(THEME.gray)(age);
+    // pad right based on inner width (use string-width for monospace alignment)
+    const innerW = getListInnerWidth(leftBox);
+    const pad1 = Math.max(1, innerW - stringWidth(id) - stringWidth(age));
+    const line1 = `${line1Left}${' '.repeat(pad1)}${line1Right}`;
+
+    // line2 path: try to color ~/ prefix purple, rest cyan
+    let line2Path = '-';
+    if (cwd) {
+      const tilde = cwd.startsWith(process.env.HOME || '')
+        ? cwd.replace(String(process.env.HOME), '~')
+        : cwd;
+      if (tilde.startsWith('~/')) {
+        line2Path = chalk.hex(THEME.purple)('~/') + chalk.hex(THEME.cyan)(tilde.slice(2));
+      } else {
+        line2Path = chalk.hex(THEME.cyan)(tilde);
+      }
+    } else {
+      line2Path = chalk.hex(THEME.gray)('-');
+    }
+    const line2 = line2Path;
+
+    const sep = chalk.hex(THEME.gray)(' • ');
+    const line3 = chalk.hex(THEME.gray)('Messages: ') + chalk.hex(THEME.yellow)(messages) + sep +
+      chalk.hex(THEME.gray)('Last: ') + lastRoleColored;
+
+    return `${line1}\n${line2}\n${line3}`;
+  }
+
+  function clearItemBoxes() {
+    while (itemBoxes.length) {
+      const it = itemBoxes.pop();
+      try { it.detach(); } catch {}
+    }
+  }
+
+  function buildItemBoxes() {
+    clearItemBoxes();
+    const innerW = getListInnerWidth(leftBox);
+    let top = 0;
+    for (let i = 0; i < pageItems.length; i++) {
+      const f = pageItems[i];
+      const meta = metaCache.get(f.path) || null;
+      const box = blessed.box({
+        parent: leftScroll,
+        top,
+        left: 0,
+        width: '100%',
+        height: ITEM_HEIGHT,
+        tags: false,
+        mouse: true,
+        content: renderItemContent(f, meta),
+      });
+      // click to select
+      box.on('click', async () => {
+        setSelectedIndex(i);
+        await updatePreviewForIndex(i);
+        loadMeta(i);
+        loadSummary(i);
+      });
+      itemBoxes.push(box);
+      top += ITEM_HEIGHT + ITEM_GAP;
+    }
+    leftScroll.setContent('');
+  }
+
+  function updateItemBox(i) {
+    const box = itemBoxes[i];
+    if (!box) return;
+    const f = pageItems[i];
+    const meta = metaCache.get(f.path) || null;
+    box.setContent(renderItemContent(f, meta));
+  }
+
+  function repaintListSelection() {
+    for (let i = 0; i < itemBoxes.length; i++) {
+      const box = itemBoxes[i];
+      if (!box) continue;
+      if (i === selectedIndex) {
+        box.style = { bg: 'gray', fg: 'black', bold: true };
+      } else {
+        box.style = { bg: null, fg: 'white', bold: false };
+      }
+    }
+  }
+
+  function ensureSelectedVisible() {
+    try {
+      const y = selectedIndex * (ITEM_HEIGHT + ITEM_GAP);
+      if (typeof leftScroll.scrollTo === 'function') leftScroll.scrollTo(y);
+    } catch {}
+  }
+
+  function setSelectedIndex(idx) {
+    if (idx < 0 || idx >= pageItems.length) return;
+    selectedIndex = idx;
+    repaintListSelection();
+    ensureSelectedVisible();
+    screen.render();
+  }
+
+  function getPreviewInnerWidth() {
+    try {
+      const total = typeof screen.width === 'number' ? screen.width : parseInt(screen.width, 10) || 100;
+      const rbWidth = fullView ? total : (total - (leftW + gap)); // rightBox total width including borders
+      const contentWidth = rbWidth - 2; // minus rightBox border
+      return Math.max(10, contentWidth);
+    } catch { return 80; }
+  }
+
+  function applyLayout() {
+    totalW = screen.width || totalW;
+    if (!fullView) {
+      leftW = Math.max(30, Math.floor(totalW * 0.35));
+      leftBox.left = 0;
+      leftBox.width = leftW;
+      leftBox.height = '100%';
+      leftBox.show();
+      rightBox.top = 0;
+      rightBox.left = leftW + gap;
+      rightBox.width = `100%-${leftW + gap}`;
+      rightBox.height = '100%';
+    } else {
+      leftBox.hide();
+      rightBox.top = 0;
+      rightBox.left = 0;
+      rightBox.width = '100%';
+      rightBox.height = '100%';
+    }
+    // rebuild item content widths
+    for (let i = 0; i < itemBoxes.length; i++) updateItemBox(i);
+  }
+  screen.on('resize', () => { applyLayout(); screen.render(); });
   let editedArgs = '';
 
   // Pagination state
@@ -158,6 +364,8 @@ export async function pickSessionSplitTUI(root, presetList = null, options = {})
         currentPage = 0;
         updatePageItems();
         screen.render();
+        try { idxLoad = 0; } catch {}
+        try { idxSum = 0; } catch {}
         await updatePreviewForIndex(0);
       }
     })();
@@ -167,23 +375,67 @@ export async function pickSessionSplitTUI(root, presetList = null, options = {})
     const start = currentPage * ITEMS_PER_PAGE;
     const end = Math.min(visibleFiles.length, start + ITEMS_PER_PAGE);
     pageItems = visibleFiles.slice(start, end);
-    list.setItems(pageItems.map(f => formatTopRow(f, metaCache.get(f.path) || null)));
-    list.select(0);
+    buildItemBoxes();
+    selectedIndex = 0;
+    repaintListSelection();
   }
 
   function updateHeader() {
     const totalPages = Math.max(1, Math.ceil(visibleFiles.length / ITEMS_PER_PAGE));
     const info = `Page ${currentPage + 1}/${totalPages} | Showing ${pageItems.length}/${visibleFiles.length}`;
     const opts = editedArgs ? ` | Options: ${editedArgs}` : '';
-    header.setContent(`Usage: ←/→ pages • ↑/↓ select • j/k scroll • Enter resume • n new • - edit options • c copy ID • f full • q quit${opts} | ${info}`);
+    header.setContent(
+      chalk.hex(THEME.gray)('Usage: ') +
+      chalk.hex(THEME.yellow)('↑/↓') + ' navigate ' + chalk.hex(THEME.gray)('• ') +
+      chalk.hex(THEME.yellow)('Enter') + ' resume ' + chalk.hex(THEME.gray)('• ') +
+      chalk.hex(THEME.yellow)('←/→') + ' pages ' + chalk.hex(THEME.gray)('• ') +
+      chalk.hex(THEME.yellow)('j/k') + ' scroll ' + chalk.hex(THEME.gray)('• ') +
+      chalk.hex(THEME.yellow)('n') + ' new ' + chalk.hex(THEME.gray)('• ') +
+      chalk.hex(THEME.yellow)('-') + ' edit options ' + chalk.hex(THEME.gray)('• ') +
+      chalk.hex(THEME.yellow)('c') + ' copy ID ' + chalk.hex(THEME.gray)('• ') +
+      chalk.hex(THEME.yellow)('f') + ' full ' + chalk.hex(THEME.gray)('• ') +
+      chalk.hex(THEME.yellow)('q') + ` quit${opts} ` + chalk.hex(THEME.gray)('• ') + info
+    );
   }
 
   function refreshListRow(i) {
     const f = pageItems[i];
     if (!f) return;
-    const meta = metaCache.get(f.path) || null;
-    const row = formatTopRow(f, meta);
-    try { list.setItem(i, row); } catch {}
+    updateItemBox(i);
+  }
+
+  async function loadSummary(i) {
+    const f = pageItems[i];
+    if (!f) return;
+    if (msgSummaryCache.has(f.path)) return;
+    try {
+      const parsed = await parseSessionFile(f.path);
+      const dialog = (parsed.messages || []).filter(m => m && (m.role === 'user' || m.role === 'assistant'));
+      const last = dialog.length ? dialog[dialog.length - 1] : null;
+      const lastRole = last ? (last.role === 'user' ? 'User' : 'Assistant') : '-';
+      msgSummaryCache.set(f.path, { count: dialog.length, lastRole });
+      updateItemBox(i);
+      // also update infoBox if this is current selection
+      if (i === selectedIndex) {
+        try { setInfoDisplay(parsed.meta, f); } catch {}
+      }
+    } catch {}
+  }
+
+  function setInfoDisplay(meta, file) {
+    try {
+      const id = (meta?.id) || path.basename(file.path);
+      const cwd = meta?.cwd || '';
+      const started = meta?.startTime ? dayjs(meta.startTime).format('YYYY-MM-DD HH:mm:ss') : '';
+      const sep = chalk.hex(THEME.gray)(' • ');
+      const content =
+        chalk.hex(THEME.gray)('Session: ') + chalk.hex(THEME.orange)(id) + sep +
+        chalk.hex(THEME.gray)('Path: ') + (cwd ? chalk.hex(THEME.cyan)(cwd) : chalk.hex(THEME.gray)('-')) + sep +
+        chalk.hex(THEME.gray)('Started: ') + (started ? chalk.hex(THEME.yellow)(started) : chalk.hex(THEME.gray)('-'));
+      infoBox.setContent(content);
+    } catch {
+      infoBox.setContent('');
+    }
   }
 
   async function loadMeta(i) {
@@ -212,8 +464,14 @@ export async function pickSessionSplitTUI(root, presetList = null, options = {})
         }
       } catch {}
     }
-    if (previewCache.has(f.path)) {
-      preview.setContent(previewCache.get(f.path));
+    // Update info from cached meta if available
+    const metaCached = metaCache.get(f.path);
+    if (metaCached) setInfoDisplay(metaCached, f);
+
+    const wrapW = getPreviewInnerWidth();
+    const cacheKey = `${f.path}::${wrapW}`;
+    if (previewCache.has(cacheKey)) {
+      preview.setContent(previewCache.get(cacheKey));
       scrollPreviewToBottom();
       screen.render();
       return;
@@ -222,8 +480,14 @@ export async function pickSessionSplitTUI(root, presetList = null, options = {})
     screen.render();
     try {
       const parsed = await parseSessionFile(f.path);
-      const body = buildDialogPreview(parsed.messages, { maxItems: 20, hide });
-      previewCache.set(f.path, body);
+      try { setInfoDisplay(parsed.meta, f); } catch {}
+      const dialog = (parsed.messages || []).filter(m => m && (m.role === 'user' || m.role === 'assistant'));
+      const last = dialog.length ? dialog[dialog.length - 1] : null;
+      const lastRole = last ? (last.role === 'user' ? 'User' : 'Assistant') : '-';
+      msgSummaryCache.set(f.path, { count: dialog.length, lastRole });
+      updateItemBox(idx);
+      const body = buildDialogPreviewBlocks(parsed.messages, { hide, wrapWidth: wrapW });
+      previewCache.set(cacheKey, body);
       if (!destroyed) {
         preview.setContent(body);
         scrollPreviewToBottom();
@@ -253,19 +517,42 @@ export async function pickSessionSplitTUI(root, presetList = null, options = {})
     })();
   }
 
-  list.select(0);
-  list.focus();
+  // preload message summaries (counts/last role) for visible items
+  let idxSum = 0;
+  const sumConcurrency = 3;
+  for (let c = 0; c < sumConcurrency; c++) {
+    (async function worker() {
+      while (idxSum < pageItems.length && !destroyed) {
+        const i = idxSum++;
+        await loadSummary(i);
+      }
+    })();
+  }
+
+  setSelectedIndex(0);
+  leftScroll.focus();
   await updatePreviewForIndex(0);
 
   const navKeys = ['up','down','pageup','pagedown','home','end'];
   for (const k of navKeys) {
-    list.key(k, async () => {
-      const sel = list.selected;
-      screen.render();
+    screen.key(k, async () => {
+      let sel = selectedIndex;
+      switch (k) {
+        case 'up': sel = Math.max(0, sel - 1); break;
+        case 'down': sel = Math.min(pageItems.length - 1, sel + 1); break;
+        case 'pageup': sel = Math.max(0, sel - 5); break;
+        case 'pagedown': sel = Math.min(pageItems.length - 1, sel + 5); break;
+        case 'home': sel = 0; break;
+        case 'end': sel = pageItems.length - 1; break;
+      }
+      setSelectedIndex(sel);
       await updatePreviewForIndex(sel);
       loadMeta(sel);
+      loadSummary(sel);
       if (sel + 1 < pageItems.length) loadMeta(sel + 1);
       if (sel - 1 >= 0) loadMeta(sel - 1);
+      if (sel + 1 < pageItems.length) loadSummary(sel + 1);
+      if (sel - 1 >= 0) loadSummary(sel - 1);
     });
   }
 
@@ -275,7 +562,9 @@ export async function pickSessionSplitTUI(root, presetList = null, options = {})
       currentPage--;
       updatePageItems();
       updateHeader();
-      idxLoad = 0; // reload meta for new page
+      // reload meta & summary for new page
+      idxLoad = 0;
+      idxSum = 0;
       await updatePreviewForIndex(0);
     }
   });
@@ -286,6 +575,7 @@ export async function pickSessionSplitTUI(root, presetList = null, options = {})
       updatePageItems();
       updateHeader();
       idxLoad = 0;
+      idxSum = 0;
       await updatePreviewForIndex(0);
     }
   });
@@ -297,15 +587,7 @@ export async function pickSessionSplitTUI(root, presetList = null, options = {})
   // Toggle full view
   screen.key(['f'], () => {
     fullView = !fullView;
-    if (fullView) {
-      topH = 3; // header only
-    } else {
-      topH = Math.max(8, Math.floor(totalH * 0.35));
-    }
-    topBox.height = topH;
-    bottomBox.top = topH + gap;
-    bottomBox.height = Math.max(6, totalH - (topH + gap));
-    // keep preview anchored at the bottom after resize
+    applyLayout();
     try { if (typeof preview.setScrollPerc === 'function') preview.setScrollPerc(100); } catch {}
     screen.render();
   });
@@ -326,7 +608,7 @@ export async function pickSessionSplitTUI(root, presetList = null, options = {})
     screen.render();
   }
 
-  function selectedFile() { return pageItems[list.selected]; }
+  function selectedFile() { return pageItems[selectedIndex]; }
 
   // Copy session id (relative path)
   screen.key(['c'], async () => {
@@ -338,8 +620,9 @@ export async function pickSessionSplitTUI(root, presetList = null, options = {})
     try { await clipboard.write(id); } catch {}
   });
 
+  applyLayout();
   return await new Promise(resolve => {
-    list.key('enter', () => {
+    screen.key('enter', () => {
       destroyed = true;
       const f = selectedFile();
       screen.destroy();

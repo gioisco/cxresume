@@ -1,0 +1,69 @@
+0 verbose cli /opt/homebrew/Cellar/node/24.4.1/bin/node /opt/homebrew/bin/npm
+1 info using npm@11.4.2
+2 info using node@v24.4.1
+3 silly config load:file:/opt/homebrew/lib/node_modules/npm/npmrc
+4 silly config load:file:/Users/tao.ling/code/github/cxresume/.npmrc
+5 silly config load:file:/Users/tao.ling/.npmrc
+6 silly config load:file:/opt/homebrew/etc/npmrc
+7 verbose title npm publish
+8 verbose argv "publish" "--access" "public" "--cache" "./.npm-cache"
+9 verbose logfile logs-max:10 dir:/Users/tao.ling/code/github/cxresume/.npm-cache/_logs/2025-10-10T07_11_04_934Z-
+10 verbose logfile /Users/tao.ling/code/github/cxresume/.npm-cache/_logs/2025-10-10T07_11_04_934Z-debug-0.log
+11 silly logfile done cleaning log files
+12 verbose publish [ '.' ]
+13 silly packumentCache heap:4496293888 maxSize:1124073472 maxEntrySize:562036736
+14 notice
+15 notice 📦  cxresume@1.0.0
+16 notice Tarball Contents
+17 notice 1.1kB LICENSE
+17 notice 4.4kB README-zh.md
+17 notice 4.6kB README.md
+17 notice 129B bin/cxresume.js
+17 notice 680B package.json
+17 notice 8.9kB src/index.js
+17 notice 11.7kB src/tui/splitPicker.js
+17 notice 2.0kB src/ui.js
+17 notice 2.1kB src/utils/compress.js
+17 notice 1.3kB src/utils/config.js
+17 notice 5.0kB src/utils/launch.js
+17 notice 2.5kB src/utils/metaQuick.js
+17 notice 2.9kB src/utils/parser.js
+17 notice 1.1kB src/utils/preview.js
+17 notice 1.2kB src/utils/search.js
+17 notice 494B src/utils/sessionFinder.js
+18 notice Tarball Details
+19 notice name: cxresume
+20 notice version: 1.0.0
+21 notice filename: cxresume-1.0.0.tgz
+22 notice package size: 16.7 kB
+23 notice unpacked size: 50.2 kB
+24 notice shasum: 61ed9bbf5825147281f9144b5b3fecf92a9ff565
+25 notice integrity: sha512-r81I2nZQedh68[...]6q2Vw5+0TiFJg==
+26 notice total files: 16
+27 notice
+28 http fetch GET 200 https://registry.npmjs.org/cxresume 746ms (cache miss)
+29 notice Publishing to https://registry.npmjs.org/ with tag latest and public access
+30 http fetch PUT 401 https://registry.npmjs.org/cxresume 441ms
+31 verbose stack HttpErrorAuthOTP: OTP required for authentication
+31 verbose stack     at /opt/homebrew/lib/node_modules/npm/node_modules/npm-registry-fetch/lib/check-response.js:84:17
+31 verbose stack     at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+31 verbose stack     at async publish (/opt/homebrew/lib/node_modules/npm/node_modules/libnpmpublish/lib/publish.js:53:15)
+31 verbose stack     at async otplease (/opt/homebrew/lib/node_modules/npm/lib/utils/auth.js:8:12)
+31 verbose stack     at async #publish (/opt/homebrew/lib/node_modules/npm/lib/commands/publish.js:184:7)
+31 verbose stack     at async Publish.exec (/opt/homebrew/lib/node_modules/npm/lib/commands/publish.js:46:5)
+31 verbose stack     at async Npm.exec (/opt/homebrew/lib/node_modules/npm/lib/npm.js:208:9)
+31 verbose stack     at async module.exports (/opt/homebrew/lib/node_modules/npm/lib/cli/entry.js:67:5)
+32 verbose statusCode 401
+33 verbose pkgid cxresume@1.0.0
+34 error code EOTP
+35 error This operation requires a one-time password from your authenticator.
+36 error You can provide a one-time password by passing --otp=<code> to the command you ran.
+36 error If you already provided a one-time password then it is likely that you either typoed
+36 error it, or it timed out. Please try again.
+37 verbose cwd /Users/tao.ling/code/github/cxresume
+38 verbose os Darwin 24.5.0
+39 verbose node v24.4.1
+40 verbose npm  v11.4.2
+41 verbose exit 1
+42 verbose code 1
+43 error A complete log of this run can be found in: /Users/tao.ling/code/github/cxresume/.npm-cache/_logs/2025-10-10T07_11_04_934Z-debug-0.log

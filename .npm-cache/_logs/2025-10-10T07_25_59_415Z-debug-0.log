@@ -1,0 +1,60 @@
+0 verbose cli /Users/tao.ling/.nvm/versions/node/v22.17.0/bin/node /Users/tao.ling/.nvm/versions/node/v22.17.0/bin/npm
+1 info using npm@10.9.2
+2 info using node@v22.17.0
+3 silly config load:file:/Users/tao.ling/.nvm/versions/node/v22.17.0/lib/node_modules/npm/npmrc
+4 silly config load:file:/Users/tao.ling/code/github/cxresume/.npmrc
+5 silly config load:file:/Users/tao.ling/.npmrc
+6 silly config load:file:/Users/tao.ling/.nvm/versions/node/v22.17.0/etc/npmrc
+7 verbose title npm publish
+8 verbose argv "publish" "--access" "public" "--cache" "./.npm-cache"
+9 verbose logfile logs-max:10 dir:/Users/tao.ling/code/github/cxresume/.npm-cache/_logs/2025-10-10T07_25_59_415Z-
+10 verbose logfile /Users/tao.ling/code/github/cxresume/.npm-cache/_logs/2025-10-10T07_25_59_415Z-debug-0.log
+11 silly logfile start cleaning logs, removing 1 files
+12 verbose publish [ '.' ]
+13 silly logfile done cleaning log files
+14 silly packumentCache heap:4345298944 maxSize:1086324736 maxEntrySize:543162368
+15 notice
+16 notice 📦  cxresume@1.0.0
+17 notice Tarball Contents
+18 notice 1.1kB LICENSE
+18 notice 4.4kB README-zh.md
+18 notice 4.6kB README.md
+18 notice 129B bin/cxresume.js
+18 notice 680B package.json
+18 notice 8.9kB src/index.js
+18 notice 11.7kB src/tui/splitPicker.js
+18 notice 2.0kB src/ui.js
+18 notice 2.1kB src/utils/compress.js
+18 notice 1.3kB src/utils/config.js
+18 notice 5.0kB src/utils/launch.js
+18 notice 2.5kB src/utils/metaQuick.js
+18 notice 2.9kB src/utils/parser.js
+18 notice 1.1kB src/utils/preview.js
+18 notice 1.2kB src/utils/search.js
+18 notice 494B src/utils/sessionFinder.js
+19 notice Tarball Details
+20 notice name: cxresume
+21 notice version: 1.0.0
+22 notice filename: cxresume-1.0.0.tgz
+23 notice package size: 17.0 kB
+24 notice unpacked size: 50.2 kB
+25 notice shasum: a8cd5f4890a626157430f9b33b46657ef152035c
+26 notice integrity: sha512-bJnN983LPJ7Uw[...]HWy6lD6FB2WaA==
+27 notice total files: 16
+28 notice
+29 notice Publishing to https://registry.npmjs.org/ with tag latest and public access
+30 http fetch PUT 401 https://registry.npmjs.org/cxresume 1008ms
+31 verbose web auth opening url pair
+32 http fetch GET 202 https://registry.npmjs.org/-/v1/done?authId=*** 304ms
+33 http fetch GET 202 https://registry.npmjs.org/-/v1/done?authId=*** 297ms
+34 http fetch GET 202 https://registry.npmjs.org/-/v1/done?authId=*** 224ms
+35 http fetch GET 202 https://registry.npmjs.org/-/v1/done?authId=*** 302ms
+36 http fetch GET 200 https://registry.npmjs.org/-/v1/done?authId=*** 313ms
+37 verbose web auth done-check finished
+38 http fetch PUT 200 https://registry.npmjs.org/cxresume 2252ms
+39 verbose cwd /Users/tao.ling/code/github/cxresume
+40 verbose os Darwin 24.5.0
+41 verbose node v22.17.0
+42 verbose npm  v10.9.2
+43 verbose exit 0
+44 info ok
