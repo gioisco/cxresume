@@ -1,6 +1,6 @@
 {
   "name": "cxresume",
-  "version": "0.1.1",
+  "version": "1.0.0",
   "description": "Resume Codex sessions from ~/.codex/session with an interactive CLI and context compression.",
   "bin": {
     "cxresume": "bin/cxresume.js"
