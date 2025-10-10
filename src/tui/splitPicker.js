@@ -202,8 +202,19 @@ export async function pickSessionSplitTUI(root, presetList = null, options = {})
   async function updatePreviewForIndex(idx) {
     if (idx < 0 || idx >= pageItems.length) return;
     const f = pageItems[idx];
+    function scrollPreviewToBottom() {
+      try {
+        if (typeof preview.setScrollPerc === 'function') {
+          preview.setScrollPerc(100);
+        } else if (typeof preview.scrollTo === 'function') {
+          const h = typeof preview.getScrollHeight === 'function' ? preview.getScrollHeight() : Infinity;
+          preview.scrollTo(h);
+        }
+      } catch {}
+    }
     if (previewCache.has(f.path)) {
       preview.setContent(previewCache.get(f.path));
+      scrollPreviewToBottom();
       screen.render();
       return;
     }
@@ -215,6 +226,7 @@ export async function pickSessionSplitTUI(root, presetList = null, options = {})
       previewCache.set(f.path, body);
       if (!destroyed) {
         preview.setContent(body);
+        scrollPreviewToBottom();
         screen.render();
       }
     } catch (e) {
@@ -293,6 +305,8 @@ export async function pickSessionSplitTUI(root, presetList = null, options = {})
     topBox.height = topH;
     bottomBox.top = topH + gap;
     bottomBox.height = Math.max(6, totalH - (topH + gap));
+    // keep preview anchored at the bottom after resize
+    try { if (typeof preview.setScrollPerc === 'function') preview.setScrollPerc(100); } catch {}
     screen.render();
   });
 
