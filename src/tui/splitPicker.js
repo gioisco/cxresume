@@ -3,6 +3,7 @@ const blessed = blessedPkg;
 import dayjs from 'dayjs';
 import path from 'node:path';
 import clipboard from 'clipboardy';
+import fs from 'node:fs/promises';
 import chalk from 'chalk';
 import stringWidth from 'string-width';
 import { listSessionFiles } from '../utils/sessionFinder.js';
@@ -123,6 +124,7 @@ export async function pickSessionSplitTUI(root, presetList = null, options = {})
       chalk.hex(THEME.yellow)('←/→') + ' pages ' + chalk.hex(THEME.gray)('• ') +
       chalk.hex(THEME.yellow)('j/k') + ' scroll ' + chalk.hex(THEME.gray)('• ') +
       chalk.hex(THEME.yellow)('n') + ' new ' + chalk.hex(THEME.gray)('• ') +
+      chalk.hex(THEME.yellow)('d') + ' delete ' + chalk.hex(THEME.gray)('• ') +
       chalk.hex(THEME.yellow)('-') + ' edit options ' + chalk.hex(THEME.gray)('• ') +
       chalk.hex(THEME.yellow)('c') + ' copy ID ' + chalk.hex(THEME.gray)('• ') +
       chalk.hex(THEME.yellow)('f') + ' full ' + chalk.hex(THEME.gray)('• ') +
@@ -187,6 +189,7 @@ export async function pickSessionSplitTUI(root, presetList = null, options = {})
   const previewCache = new Map();
   let destroyed = false;
   let fullView = false;
+  let modalActive = false; // block global key actions when a modal is open
   const ITEM_HEIGHT = 3;
   const ITEM_GAP = 1; // visual spacing between blocks
   let selectedIndex = 0;
@@ -285,7 +288,7 @@ export async function pickSessionSplitTUI(root, presetList = null, options = {})
       const box = itemBoxes[i];
       if (!box) continue;
       if (i === selectedIndex) {
-        box.style = { bg: 'gray', fg: 'black', bold: true };
+        box.style = { bg: 'blue', fg: 'black', bold: true };
       } else {
         box.style = { bg: null, fg: 'white', bold: false };
       }
@@ -391,6 +394,7 @@ export async function pickSessionSplitTUI(root, presetList = null, options = {})
       chalk.hex(THEME.yellow)('←/→') + ' pages ' + chalk.hex(THEME.gray)('• ') +
       chalk.hex(THEME.yellow)('j/k') + ' scroll ' + chalk.hex(THEME.gray)('• ') +
       chalk.hex(THEME.yellow)('n') + ' new ' + chalk.hex(THEME.gray)('• ') +
+      chalk.hex(THEME.yellow)('d') + ' delete ' + chalk.hex(THEME.gray)('• ') +
       chalk.hex(THEME.yellow)('-') + ' edit options ' + chalk.hex(THEME.gray)('• ') +
       chalk.hex(THEME.yellow)('c') + ' copy ID ' + chalk.hex(THEME.gray)('• ') +
       chalk.hex(THEME.yellow)('f') + ' full ' + chalk.hex(THEME.gray)('• ') +
@@ -536,6 +540,7 @@ export async function pickSessionSplitTUI(root, presetList = null, options = {})
   const navKeys = ['up','down','pageup','pagedown','home','end'];
   for (const k of navKeys) {
     screen.key(k, async () => {
+      if (modalActive) return;
       let sel = selectedIndex;
       switch (k) {
         case 'up': sel = Math.max(0, sel - 1); break;
@@ -558,6 +563,7 @@ export async function pickSessionSplitTUI(root, presetList = null, options = {})
 
   // Page navigation
   screen.key(['left'], async () => {
+    if (modalActive) return; // ignore when modal
     if (currentPage > 0) {
       currentPage--;
       updatePageItems();
@@ -569,6 +575,7 @@ export async function pickSessionSplitTUI(root, presetList = null, options = {})
     }
   });
   screen.key(['right'], async () => {
+    if (modalActive) return; // ignore when modal
     const totalPages = Math.ceil(visibleFiles.length / ITEMS_PER_PAGE);
     if (currentPage < totalPages - 1) {
       currentPage++;
@@ -581,11 +588,12 @@ export async function pickSessionSplitTUI(root, presetList = null, options = {})
   });
 
   // preview scroll via j/k
-  screen.key(['j'], () => { preview.scroll(1); screen.render(); });
-  screen.key(['k'], () => { preview.scroll(-1); screen.render(); });
+  screen.key(['j'], () => { if (modalActive) return; preview.scroll(1); screen.render(); });
+  screen.key(['k'], () => { if (modalActive) return; preview.scroll(-1); screen.render(); });
 
   // Toggle full view
   screen.key(['f'], () => {
+    if (modalActive) return;
     fullView = !fullView;
     applyLayout();
     try { if (typeof preview.setScrollPerc === 'function') preview.setScrollPerc(100); } catch {}
@@ -596,10 +604,10 @@ export async function pickSessionSplitTUI(root, presetList = null, options = {})
     const overlay = blessed.box({
       parent: screen,
       top: 'center', left: 'center', width: '80%', height: 7,
-      border: { type: 'line' }, label: ' Edit Codex Options ',
+      border: { type: 'line' }, label: ' Edit Codex Options ', borderColor: 'blue',
       keys: true
     });
-    const prompt = blessed.text({ parent: overlay, top: 1, left: 2, content: 'Enter extra command arguments (Enter to confirm / Esc to cancel):' });
+    const prompt = blessed.text({ parent: overlay, top: 1, left: 2, content: chalk.hex(THEME.gray)('Enter extra command arguments (Enter to confirm / Esc to cancel):') });
     const input = blessed.textbox({ parent: overlay, top: 3, left: 2, width: '95%', height: 1, inputOnFocus: true, keys: true, mouse: true, value: editedArgs });
     input.focus();
     function cleanup() { overlay.destroy(); screen.render(); }
@@ -620,16 +628,142 @@ export async function pickSessionSplitTUI(root, presetList = null, options = {})
     try { await clipboard.write(id); } catch {}
   });
 
+  async function confirmDeleteDialog({ id, filePath }) {
+    modalActive = true;
+    return await new Promise(resolve => {
+      const overlay = blessed.box({
+        parent: screen,
+        top: 'center', left: 'center', width: '80%', height: 10,
+        border: { type: 'line' }, label: ' Confirm Delete ', borderColor: 'yellow',
+        keys: true
+      });
+      blessed.box({
+        parent: overlay,
+        top: 1, left: 2, width: '95%', height: 3,
+        tags: false,
+        content: 'Delete this session? This will remove the jsonl file.\n' +
+                 `ID: ${id}\n` +
+                 `File: ${filePath}`
+      });
+      blessed.box({
+        parent: overlay,
+        top: 5, left: 2, width: '95%', height: 1,
+        content: chalk.hex(THEME.gray)('Use [1m←/→[0m to choose, Enter confirm, Y=Yes, N=No, Esc cancel')
+      });
+
+      // Buttons row
+      const btnRow = blessed.box({ parent: overlay, top: 7, left: 0, width: '100%', height: 1 });
+      const yesBtn = blessed.box({ parent: btnRow, top: 0, left: '35%', width: 8, height: 1, content: '  Yes  ' });
+      const noBtn  = blessed.box({ parent: btnRow, top: 0, left: '55%', width: 8, height: 1, content: '  No   ' });
+      let selected = 1; // default to No for safety
+      function paint() {
+        if (selected === 0) {
+          yesBtn.style = { bg: 'green', fg: 'black', bold: true };
+          noBtn.style = { bg: null, fg: 'white', bold: false };
+        } else {
+          yesBtn.style = { bg: null, fg: 'white', bold: false };
+          noBtn.style  = { bg: 'red', fg: 'black', bold: true };
+        }
+      }
+      paint();
+
+      function finish(ans) {
+        try { overlay.destroy(); } catch {}
+        modalActive = false;
+        screen.render();
+        resolve(ans);
+      }
+
+      overlay.key(['left'], () => { selected = 0; paint(); screen.render(); });
+      overlay.key(['right'], () => { selected = 1; paint(); screen.render(); });
+      overlay.key(['y','Y'], () => finish(true));
+      overlay.key(['n','N'], () => finish(false));
+      overlay.key(['enter'], () => finish(selected === 0));
+      overlay.key(['escape'], () => finish(false));
+      overlay.focus();
+      screen.render();
+    });
+  }
+
+  async function deleteSelectedFile() {
+    const f = selectedFile();
+    if (!f) return;
+    let meta = metaCache.get(f.path);
+    if (!meta) { try { meta = await extractSessionMetaQuick(f.path); metaCache.set(f.path, meta); } catch {} }
+    const id = meta?.id || f.rel || f.path;
+
+    const confirmed = await confirmDeleteDialog({ id, filePath: f.path });
+    if (!confirmed) return;
+
+    try {
+      await fs.unlink(f.path);
+    } catch (e) {
+      // show error dialog
+      await new Promise(res => {
+        const overlay = blessed.box({ parent: screen, top: 'center', left: 'center', width: '70%', height: 7, border: { type: 'line' }, label: ' Delete Failed ', keys: true });
+        blessed.box({ parent: overlay, top: 1, left: 2, width: '95%', height: 3, content: String(e?.message || e) });
+        overlay.key(['enter','escape','q'], () => { try { overlay.destroy(); } catch {} screen.render(); res(); });
+        overlay.focus();
+        screen.render();
+      });
+      return;
+    }
+
+    // Remove from caches
+    try { metaCache.delete(f.path); } catch {}
+    try { msgSummaryCache.delete(f.path); } catch {}
+    try {
+      for (const key of Array.from(previewCache.keys())) {
+        if (key.startsWith(`${f.path}::`)) previewCache.delete(key);
+      }
+    } catch {}
+
+    // Remove from lists
+    visibleFiles = visibleFiles.filter(it => it.path !== f.path);
+
+    // If no more files, exit
+    if (!visibleFiles.length) {
+      destroyed = true;
+      screen.destroy();
+      return await Promise.resolve();
+    }
+
+    // Adjust current page if needed
+    const totalPages = Math.max(1, Math.ceil(visibleFiles.length / ITEMS_PER_PAGE));
+    if (currentPage >= totalPages) currentPage = totalPages - 1;
+
+    const prevSel = selectedIndex;
+    updatePageItems();
+    updateHeader();
+    // pick nearest index
+    const newSel = Math.max(0, Math.min(prevSel, pageItems.length - 1));
+    setSelectedIndex(newSel);
+    await updatePreviewForIndex(newSel);
+    screen.render();
+  }
+
   applyLayout();
   return await new Promise(resolve => {
     screen.key('enter', () => {
+      if (modalActive) return; // avoid conflict when a modal is open
       destroyed = true;
       const f = selectedFile();
       screen.destroy();
       resolve({ path: f.path, extraArgs: editedArgs, action: 'resume' });
     });
-    screen.key(['-'], () => { askEditOptions(); });
+    // Delete selected session
+    screen.key(['d'], async () => {
+      if (modalActive) return;
+      await deleteSelectedFile();
+      // If after deletion there are no files, exit gracefully
+      if (!visibleFiles.length) {
+        if (!destroyed) { destroyed = true; screen.destroy(); }
+        resolve(null);
+      }
+    });
+    screen.key(['-'], () => { if (modalActive) return; askEditOptions(); });
     screen.key(['n'], async () => {
+      if (modalActive) return; // prevent conflict with delete dialog using 'n'
       const f = selectedFile(); if (!f) return;
       let cwd;
       try { cwd = (await extractSessionMetaQuick(f.path))?.cwd; } catch {}
@@ -638,6 +772,7 @@ export async function pickSessionSplitTUI(root, presetList = null, options = {})
       resolve({ action: 'startNew', workingDir: cwd, extraArgs: editedArgs });
     });
     screen.key(['q','C-c','escape'], () => {
+      if (modalActive) return; // do not allow quitting while a modal is open
       destroyed = true;
       screen.destroy();
       resolve(null);
