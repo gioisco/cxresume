@@ -36,6 +36,7 @@ TUI Keys
 - Preview: `j/k` scroll the bottom preview
 - Start: `Enter` resume the selected session
 - New session: `n` start a new Codex session in the same directory
+- Delete session: `d` delete the selected session file (confirms via dialog; choose Yes/No with `Y/N` or `←/→`, `Enter` confirms selection; permanently removes the `.jsonl` file)
 - Edit options: `-` append extra arguments to your `codexCmd` for this launch
 - Copy ID: `c` copy the session identifier (from the file’s meta) to clipboard
 - Full view: `f` toggle full preview
