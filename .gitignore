@@ -45,6 +45,7 @@ reference/
 *.swo
 *.tsbuildinfo
 *.html
+!docs/*.html
 
 # npm cache
 .npm-cache/
