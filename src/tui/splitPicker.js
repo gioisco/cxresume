@@ -81,7 +81,7 @@ function buildDialogPreviewBlocks(messages, { hide = [], wrapWidth } = {}) {
 }
 
 export async function pickSessionSplitTUI(root, presetList = null, options = {}) {
-  const { hide = [], currentDirOnly = false } = options || {};
+  const { hide = [], currentDirOnly = false, workspaceMode = false } = options || {};
   const files = presetList || await listSessionFiles(root);
   if (!files.length) return null;
 
@@ -123,6 +123,7 @@ export async function pickSessionSplitTUI(root, presetList = null, options = {})
       chalk.hex(THEME.yellow)('Enter') + ' resume ' + chalk.hex(THEME.gray)('• ') +
       chalk.hex(THEME.yellow)('←/→') + ' pages ' + chalk.hex(THEME.gray)('• ') +
       chalk.hex(THEME.yellow)('j/k') + ' scroll ' + chalk.hex(THEME.gray)('• ') +
+      (workspaceMode ? chalk.hex(THEME.yellow)('s') + ' workspace new ' + chalk.hex(THEME.gray)('• ') : '') +
       chalk.hex(THEME.yellow)('n') + ' new ' + chalk.hex(THEME.gray)('• ') +
       chalk.hex(THEME.yellow)('d') + ' delete ' + chalk.hex(THEME.gray)('• ') +
       chalk.hex(THEME.yellow)('-') + ' edit options ' + chalk.hex(THEME.gray)('• ') +
@@ -393,6 +394,7 @@ export async function pickSessionSplitTUI(root, presetList = null, options = {})
       chalk.hex(THEME.yellow)('Enter') + ' resume ' + chalk.hex(THEME.gray)('• ') +
       chalk.hex(THEME.yellow)('←/→') + ' pages ' + chalk.hex(THEME.gray)('• ') +
       chalk.hex(THEME.yellow)('j/k') + ' scroll ' + chalk.hex(THEME.gray)('• ') +
+      (workspaceMode ? chalk.hex(THEME.yellow)('s') + ' workspace new ' + chalk.hex(THEME.gray)('• ') : '') +
       chalk.hex(THEME.yellow)('n') + ' new ' + chalk.hex(THEME.gray)('• ') +
       chalk.hex(THEME.yellow)('d') + ' delete ' + chalk.hex(THEME.gray)('• ') +
       chalk.hex(THEME.yellow)('-') + ' edit options ' + chalk.hex(THEME.gray)('• ') +
@@ -770,6 +772,12 @@ export async function pickSessionSplitTUI(root, presetList = null, options = {})
       destroyed = true;
       screen.destroy();
       resolve({ action: 'startNew', workingDir: cwd, extraArgs: editedArgs });
+    });
+    screen.key(['s'], () => {
+      if (modalActive || !workspaceMode) return;
+      destroyed = true;
+      screen.destroy();
+      resolve({ action: 'workspaceCreate' });
     });
     screen.key(['q','C-c','escape'], () => {
       if (modalActive) return; // do not allow quitting while a modal is open
