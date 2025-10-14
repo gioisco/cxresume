@@ -11,6 +11,7 @@ Codex Resume (cxresume) is a tiny CLI/TUI to resume Codex sessions fast: it disc
 Install
 
 - Node.js 18+
+- Codex CLI (codex) >= 0.46.0
 - Global install (recommended): `npm i -g cxresume`
 - Verify: `cxresume --help`
 - Upgrade: `npm i -g cxresume@latest`

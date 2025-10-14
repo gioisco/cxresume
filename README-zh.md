@@ -11,6 +11,7 @@ Codex Resume（cxresume）是一个用于“继续/恢复 Codex 会话”的命�
 安装
 
 - Node.js 18+
+- Codex CLI（`codex`）版本 >= 0.46.0
 - 全局安装（推荐）：`npm i -g cxresume`
 - 验证：`cxresume --help`
 - 升级：`npm i -g cxresume@latest`
