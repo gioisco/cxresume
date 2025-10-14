@@ -6,7 +6,12 @@ cxresume（Codex Resume CLI）
 
 ![Codex Resume TUI – resume Codex sessions, load sessions from history](./ss/sc.png)
 
-Codex Resume（cxresume）是一个用于“继续/恢复 Codex 会话”的命令行/TUI 小工具：从 `~/.codex/sessions` 加载历史记录（load sessions from history），并使用 `codex resume <sessionId>` 启动 Codex 让你在原处继续。如果你在搜索 “codex resume”、“resume codex sessions” 或 “load sessions from history”，这个工具正是为此场景而生。
+Codex Resume（cxresume）是一个用于“继续/恢复 Codex 会话”的命令行/TUI 小工具：从 `~/.codex/sessions` 加载历史记录，并使用 `codex resume <sessionId>` 启动 Codex 让你在原处继续。为了更方便的流程，我们提供两个主要入口：
+
+- `cxresume` —— 浏览所有 Codex 历史会话
+- `cxresume cwd` —— 只关注当前工作目录的会话，并把会话 ID 保存到 `.cxresume_sessions`
+
+如果你在搜索 “codex resume”、“resume codex sessions” 或 “load sessions from history”，这个工具正是为此场景而生。
 
 安装
 
@@ -22,13 +27,13 @@ Codex Resume（cxresume）是一个用于“继续/恢复 Codex 会话”的命�
 快速开始
 
 - 运行 `cxresume` 打开分屏 TUI：上半区列出会话，下半区展示最近对话预览。按 Enter 后，直接运行 `codex resume <sessionId>` 启动 Codex 并恢复会话。
-- 运行 `cxresume cwd` 聚焦当前工作目录。该命令会在项目根目录创建/维护 `.cxresume_sessions` 文件，并仅显示针对该目录记录的会话。
+- 运行 `cxresume cwd` 聚焦当前工作目录。该命令会读取或生成 `.cxresume_sessions`，自动跟踪新会话，并只显示与本项目相关的会话 ID。
 
 为什么是 cxresume
 
-- 即刻从历史日志恢复 Codex 会话
 - 一条命令实现工作区级会话恢复（`cxresume cwd`）
-- 一条命令搜索并加载历史记录（load sessions from history）
+- 即刻从历史日志恢复 Codex 会话
+- 易于筛选和搜索会话，配合常见命令行参数
 - 直接使用 Codex 原生 `resume` 命令（不再需要 Primer/剪贴板注入）
 - 支持交互式 TUI 与非交互 CLI
 - 无需项目配置，只需指向 Codex 日志目录

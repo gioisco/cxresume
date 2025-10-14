@@ -6,7 +6,12 @@ cxresume (Codex Resume CLI)
 
 ![Codex Resume TUI – resume Codex sessions, load sessions from history](./ss/sc.png)
 
-Codex Resume (cxresume) is a tiny CLI/TUI to resume Codex sessions fast: it discovers and loads sessions from history under `~/.codex/sessions`, and launches Codex using `codex resume <sessionId>` so you can pick up where you left off. If you’re searching for “codex resume”, “resume codex sessions”, or “load sessions from history”, this tool is built for exactly that workflow.
+Codex Resume (cxresume) is a tiny CLI/TUI to resume Codex sessions fast. It discovers and loads conversation logs under `~/.codex/sessions`, and launches Codex using `codex resume <sessionId>` so you can pick up where you left off. Two primary entry points keep things simple:
+
+- `cxresume` — browse every session from your Codex history
+- `cxresume cwd` — focus on the sessions that were created in **this workspace** and keep their IDs in `.cxresume_sessions`
+
+If you’re searching for “codex resume”, “resume codex sessions”, or “load sessions from history”, this tool was built for exactly that workflow.
 
 Install
 
@@ -22,13 +27,13 @@ Tip: one‑off run without installing: `npx cxresume --help`
 Quick Start
 
 - `cxresume` — opens a split‑pane TUI. The top pane lists sessions; the bottom pane previews recent dialog. Press Enter to launch `codex resume <sessionId>` for the selected session.
-- `cxresume cwd` — focuses on the current workspace directory. Sessions created via this command are tracked in `.cxresume_sessions` under your project and filtered automatically.
+- `cxresume cwd` — pins the view to the current workspace directory. The command will read or create `.cxresume_sessions`, auto-track new sessions, and only display IDs associated with this project.
 
 Why cxresume
 
-- Resume Codex sessions instantly from prior logs
 - Workspace-scoped session recovery with one command (`cxresume cwd`)
-- Search and load sessions from history with one command
+- Resume Codex sessions instantly from prior logs
+- Filter and search sessions with familiar shell commands
 - Uses Codex’s native `resume` command (no primer/injection needed)
 - Works as an interactive TUI or non‑interactive CLI
 - Zero project config; just point to your Codex logs
