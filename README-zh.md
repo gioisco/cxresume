@@ -22,10 +22,12 @@ Codex Resume（cxresume）是一个用于“继续/恢复 Codex 会话”的命�
 快速开始
 
 - 运行 `cxresume` 打开分屏 TUI：上半区列出会话，下半区展示最近对话预览。按 Enter 后，直接运行 `codex resume <sessionId>` 启动 Codex 并恢复会话。
+- 运行 `cxresume cwd` 聚焦当前工作目录。该命令会在项目根目录创建/维护 `.cxresume_sessions` 文件，并仅显示针对该目录记录的会话。
 
 为什么是 cxresume
 
 - 即刻从历史日志恢复 Codex 会话
+- 一条命令实现工作区级会话恢复（`cxresume cwd`）
 - 一条命令搜索并加载历史记录（load sessions from history）
 - 直接使用 Codex 原生 `resume` 命令（不再需要 Primer/剪贴板注入）
 - 支持交互式 TUI 与非交互 CLI
@@ -37,6 +39,7 @@ Codex Resume（cxresume）是一个用于“继续/恢复 Codex 会话”的命�
 - 预览滚动：`j/k`
 - 启动会话：`Enter`
 - 新建会话：`n`（在该会话记录的目录中启动）
+- 工作区新建：`s`（仅在 `cxresume cwd` 中生效）即时创建并记录新的工作区会话
 - 删除会话：`d` 删除选中的会话文件（带确认弹窗；可用 `Y/N` 或 `←/→` 选择，`Enter` 确认；会永久删除该 `.jsonl` 文件）
 - 临时添加参数：`-`（为本次启动临时追加到 `codexCmd`）
 - 复制会话 ID：`c`
@@ -55,12 +58,22 @@ Codex Resume（cxresume）是一个用于“继续/恢复 Codex 会话”的命�
 - `--print` — 仅打印将要执行的命令并退出
 - `--no-launch` — 不启动 Codex（通常配合 `--print` 使用）
 - `-y`, `--yes` — 跳过交互确认
+- `-n`, `--new`（配合 `cwd`）— 创建、记录并立即恢复新的工作区会话
+- `-l`, `--latest`（配合 `cwd`）— 直接恢复该目录最近记录的工作区会话
 - `-h`, `--help` — 帮助
 - `-v`, `--version` — 版本
 
 筛选
 
 - 当前目录筛选：`cxresume .` 仅显示日志中 `cwd` 等于当前目录的会话（尽力而为，依赖日志中是否记录 `cwd`）。
+- 工作区筛选：`cxresume cwd` 仅展示 `.cxresume_sessions` 中记录的会话，且在缺失时会自动创建一条新的记录。
+
+工作区会话
+
+- 每个工作目录都会维护一个 `.cxresume_sessions` 文件，存储通过 `cxresume cwd` 创建的会话 ID。
+- 使用 `cxresume cwd -n` 可以创建一个新的工作区会话，写入 `.cxresume_sessions` 并立即启动。
+- 使用 `cxresume cwd -l` 可以直接恢复该目录最近记录的会话。
+- 在 `cxresume cwd` 打开的 TUI 内，随时按 `s` 就能触发同样的“创建并恢复”流程。
 
 配置
 
