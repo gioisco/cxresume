@@ -11,14 +11,7 @@ export async function loadConfig({ overrideCodexCmd, overrideRoot } = {}) {
   const defaults = {
     codexCmd: 'codex',
     logsRoot: path.join(os.homedir(), '.codex', 'sessions'),
-    preview: false,
-    inject: 'inline',
-    injectDelayMs: 1000,
-    injectWakeEnter: false,
-    injectWakeDelayMs: 250,
-    inlineArgMaxChars: 120000,
-    primerAllPerMessageMax: 400,
-    primerAllTargetChars: 10000
+    preview: false
   };
 
   const p = getConfigPath();

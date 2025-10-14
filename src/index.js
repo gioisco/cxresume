@@ -5,12 +5,11 @@ import { fileURLToPath } from 'node:url';
 import { loadConfig, resolveLogsRoot } from './utils/config.js';
 import { pickSessionInteractively, showMessage, renderPreview } from './ui.js';
 import { pickSessionSplitTUI } from './tui/splitPicker.js';
-import { buildPrimerAll } from './utils/compress.js';
 import { parseSessionFile } from './utils/parser.js';
 import { listSessionFiles } from './utils/sessionFinder.js';
 import { searchSessions } from './utils/search.js';
-import { launchCodex, launchCodexRaw } from './utils/launch.js';
-import { filterSessionsByCwd } from './utils/metaQuick.js';
+import { launchCodexRaw } from './utils/launch.js';
+import { filterSessionsByCwd, extractSessionMetaQuick } from './utils/metaQuick.js';
 // dynamic keep is not used in full-history compression mode
 
 function parseArgs(argv) {
@@ -78,8 +77,8 @@ function showHelp() {
   console.log('  --hide [types...]      Hide types in preview: tool thinking user assistant system (default: tool thinking)');
   // injection is inline by default; advanced injection flags removed for simplicity
   console.log('  --legacy-ui            Use legacy single-prompt selector (no split view)');
-  console.log('  --print                Only print the primer and exit');
-  console.log('  --no-launch            Do not launch Codex (copy primer to clipboard only)');
+  console.log('  --print                Only print the command and exit');
+  console.log('  --no-launch            Do not launch Codex');
   console.log('  --debug                Print extra diagnostics');
   console.log('  -h, --help             Show help');
   console.log('  -v, --version          Show version');
@@ -165,48 +164,51 @@ async function main() {
     process.exit(2);
   }
 
-  if (args.debug) console.error(chalk.gray(`Parsing ${targetFile} ...`));
-  const { messages, meta } = await parseSessionFile(targetFile);
-  if (!messages.length) {
-    console.error(chalk.red('No messages could be parsed from the session.'));
-    process.exit(3);
+  // Extract session id quickly
+  if (args.debug) console.error(chalk.gray(`Extracting session id from ${targetFile} ...`));
+  let quickMeta = null;
+  try { quickMeta = await extractSessionMetaQuick(targetFile); } catch {}
+  const sessionId = quickMeta?.id || path.relative(root, targetFile);
+  if (!quickMeta?.id) {
+    console.log(chalk.yellow(`Warning: session id not found in meta; using relative path as id: ${sessionId}`));
   }
 
+  // Optional preview (best-effort)
   const wantPreview = args.preview !== undefined ? args.preview : cfg.preview;
   if (wantPreview && !args.print) {
-    console.log(chalk.magenta('\nPreview of recent dialog (auto-continue):'));
-    console.log(renderPreview({ messages, max: 5, query: args.search }));
+    try {
+      const { messages } = await parseSessionFile(targetFile);
+      if (messages?.length) {
+        console.log(chalk.magenta('\nPreview of recent dialog:'));
+        console.log(renderPreview({ messages, max: 5, query: args.search }));
+      }
+    } catch {}
   }
 
-  // Using full-history compression; derive per-message/max budget from config
-  const perMessageMax = (cfg.primerAllPerMessageMax || 400);
-  const targetChars = (cfg.primerAllTargetChars || 10000);
-  const primer = buildPrimerAll({
-    messages,
-    sessionId: (meta?.id) ? meta.id : path.relative(root, targetFile),
-    startTime: meta.startTime,
-    endTime: meta.endTime,
-    perMessageMax,
-    targetChars,
-  });
+  // Build command: codex resume <sessionId> [extraArgs]
+  function shellQuoteSingleArg(s) {
+    if (s === '') return "''";
+    return "'" + String(s).replace(/'/g, "'\\''") + "'";
+  }
+  const extraArgs = (tuiResult?.extraArgs || '').trim();
+  const cmdWithArgs = [
+    cfg.codexCmd,
+    'resume',
+    shellQuoteSingleArg(sessionId),
+    extraArgs
+  ].filter(Boolean).join(' ');
 
   if (args.print) {
-    console.log(primer);
+    console.log(cmdWithArgs);
     return;
   }
 
-  const cmdWithArgs = [cfg.codexCmd, (tuiResult?.extraArgs || '').trim()].filter(Boolean).join(' ');
   if (args.noLaunch) {
-    await showMessage('已生成上下文但未启动（--no-launch）。');
+    await showMessage('已生成命令但未启动（--no-launch）。');
     return;
   }
 
-  const inject = cfg.inject || 'inline';
-  const injectDelayMs = (cfg.injectDelayMs || 1000);
-  const injectWakeEnter = !!cfg.injectWakeEnter;
-  const injectWakeDelayMs = (cfg.injectWakeDelayMs || 250);
-  const inlineArgMax = cfg.inlineArgMaxChars || 120000;
-  await launchCodex({ primer, codexCmd: cmdWithArgs, inject, injectDelayMs, workingDir: tuiResult?.workingDir || process.cwd(), injectWakeEnter, injectWakeDelayMs, inlineArgMax });
+  await launchCodexRaw({ codexCmd: cmdWithArgs, workingDir: process.cwd() });
 }
 
 main();
