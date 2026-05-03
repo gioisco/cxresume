@@ -6,7 +6,7 @@ cxresume (Codex Resume CLI)
 
 ![Codex Resume TUI – resume Codex sessions, load sessions from history](./ss/sc.png)
 
-Codex Resume (cxresume) is a tiny CLI/TUI to resume Codex sessions fast. It discovers and loads conversation logs under `~/.codex/sessions`, and launches Codex using `codex resume <sessionId>` so you can pick up where you left off. Two primary entry points keep things simple:
+Codex Resume (cxresume) is a tiny CLI/TUI to resume Codex sessions fast. It discovers and loads conversation logs under your Codex home sessions folder (`$CODEX_HOME/sessions` when `CODEX_HOME` is set, otherwise `~/.codex/sessions`), and launches Codex using `codex resume <sessionId>` so you can pick up where you left off. Two primary entry points keep things simple:
 
 - `cxresume` — browse every session from your Codex history
 - `cxresume cwd` — focus on the sessions that were created in **this workspace** and keep their IDs in `.cxresume_sessions`
@@ -55,7 +55,7 @@ Options
 
 - `--list` — list recent session files
 - `--open <file>` — open a specific session jsonl (relative to root or absolute)
-- `--root <dir>` — override sessions root (default: `~/.codex/sessions`)
+- `--root <dir>` — override sessions root (default: `$CODEX_HOME/sessions` or `~/.codex/sessions`)
 - `--codex <cmd>` — override Codex launch command (default: `codex`)
 - `--search <text>` — content search across all sessions, then pick from matches
 - `--legacy-ui` — legacy selector without the split preview
@@ -82,7 +82,8 @@ Workspace Sessions
 
 Config
 
-- Place JSON at `~/.config/cxresume/config.json`:
+- Place JSON at `~/.config/cxresume/config.json`.
+- `logsRoot` is an explicit override; without it, cxresume uses `$CODEX_HOME/sessions` when `CODEX_HOME` is set, otherwise `~/.codex/sessions`.
 
 ```
 {

@@ -83,7 +83,7 @@ function showHelp() {
   const __dirname = path.dirname(fileURLToPath(import.meta.url));
   const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf8'));
   console.log(`\n${chalk.cyan('cxresume')} v${pkg.version}\n`);
-  console.log('Resume Codex sessions from ~/.codex/sessions');
+  console.log('Resume Codex sessions from your Codex home sessions folder');
   console.log('\nUsage:');
   console.log('  cxresume               # interactive session picker');
   console.log('  cxresume --list        # list recent session files');
@@ -91,7 +91,7 @@ function showHelp() {
   console.log('  cxresume cwd           # resume sessions recorded for current workspace');
   console.log('  cxresume .             # filter sessions by current working directory (if available)');
   console.log('\nOptions:');
-  console.log('  --root <dir>           Override sessions root (default: ~/.codex/sessions)');
+  console.log('  --root <dir>           Override sessions root (default: $CODEX_HOME/sessions or ~/.codex/sessions)');
   console.log('  --codex <cmd>          Codex launch command (default: "codex")');
   // console.log('  --keep-last <n>        Keep last N messages verbatim (default: 8)');
   console.log('  --search <text>        Content search, then pick from matches');
@@ -252,7 +252,7 @@ async function main() {
       preset = workspaceSessions.slice().sort((a, b) => b.mtime - a.mtime);
       if (!preset.length) {
         if (workspaceSessionIds.length) {
-          console.log(chalk.yellow('未找到对应 session 文件，请稍候后再试或检查 ~/.codex/sessions。'));
+          console.log(chalk.yellow('未找到对应 session 文件，请稍候后再试或检查 Codex home 的 sessions 目录。'));
         } else {
           console.log(chalk.yellow('当前目录下暂无已记录的 session。'));
         }
@@ -321,4 +321,7 @@ async function main() {
   await resumeSessionById(sessionId, { extraArgs, workingDir: tuiResult?.workingDir || process.cwd() });
 }
 
-main();
+main().catch((err) => {
+  console.error(chalk.red(err?.message || String(err)));
+  process.exit(1);
+});
