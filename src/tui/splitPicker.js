@@ -85,6 +85,8 @@ export async function pickSessionSplitTUI(root, presetList = null, options = {})
   const files = presetList || await listSessionFiles(root);
   if (!files.length) return null;
 
+  // Let blessed create its default program. A custom tput-enabled program can
+  // print noisy terminfo compiler errors for modern *-256color entries.
   const screen = blessed.screen({
     smartCSR: true,
     warnings: false,
