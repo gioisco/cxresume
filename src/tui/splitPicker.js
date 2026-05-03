@@ -85,17 +85,23 @@ export async function pickSessionSplitTUI(root, presetList = null, options = {})
   const files = presetList || await listSessionFiles(root);
   if (!files.length) return null;
 
-  // Use a custom blessed program with extended terminfo disabled.
-  // Some xterm-256color terminfo entries contain extended caps (e.g., Setulc)
-  // that blessed cannot compile due to malformed strings. Disabling extended
-  // terminfo avoids those problematic capabilities.
   let screen;
   try {
-    const program = blessed.program({ terminal: process.env.TERM, extended: false, tput: true });
-    screen = blessed.screen({ program, smartCSR: true, warnings: false, title: 'cxresume - Sessions / Preview', fullUnicode: true });
+    screen = blessed.screen({
+      smartCSR: true,
+      warnings: false,
+      title: 'cxresume - Sessions / Preview',
+      fullUnicode: true,
+    });
   } catch {
-    // Fallback to default behavior if custom program setup fails
-    screen = blessed.screen({ smartCSR: true, warnings: false, title: 'cxresume - Sessions / Preview', fullUnicode: true });
+    // Fallback to a more conservative terminal setup if the default screen init fails.
+    screen = blessed.screen({
+      smartCSR: true,
+      warnings: false,
+      title: 'cxresume - Sessions / Preview',
+      fullUnicode: true,
+      terminal: 'xterm',
+    });
   }
   const gap = 1;
   let totalW = screen.width || 100;
