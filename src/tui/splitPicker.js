@@ -85,24 +85,12 @@ export async function pickSessionSplitTUI(root, presetList = null, options = {})
   const files = presetList || await listSessionFiles(root);
   if (!files.length) return null;
 
-  let screen;
-  try {
-    screen = blessed.screen({
-      smartCSR: true,
-      warnings: false,
-      title: 'cxresume - Sessions / Preview',
-      fullUnicode: true,
-    });
-  } catch {
-    // Fallback to a more conservative terminal setup if the default screen init fails.
-    screen = blessed.screen({
-      smartCSR: true,
-      warnings: false,
-      title: 'cxresume - Sessions / Preview',
-      fullUnicode: true,
-      terminal: 'xterm',
-    });
-  }
+  const screen = blessed.screen({
+    smartCSR: true,
+    warnings: false,
+    title: 'cxresume - Sessions / Preview',
+    fullUnicode: true,
+  });
   const gap = 1;
   let totalW = screen.width || 100;
   let leftW = Math.max(30, Math.floor(totalW * 0.35));
