@@ -2,30 +2,37 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 
-export function findCodexHome() {
-  const envValue = process.env.CODEX_HOME;
-  if (envValue !== undefined && envValue !== '') {
-    const resolved = path.resolve(envValue);
-    let stat;
-    try {
-      stat = fs.statSync(resolved);
-    } catch (err) {
-      if (err?.code === 'ENOENT') {
-        throw new Error(`CODEX_HOME points to "${envValue}", but that path does not exist`);
-      }
-      throw new Error(`failed to read CODEX_HOME "${envValue}": ${err?.message || err}`);
+function resolveCodexHome(rawValue) {
+  const resolved = path.resolve(rawValue);
+
+  let stat;
+  try {
+    stat = fs.statSync(resolved);
+  } catch (err) {
+    if (err?.code === 'ENOENT') {
+      throw new Error(`CODEX_HOME points to "${rawValue}", but that path does not exist`);
     }
-    if (!stat.isDirectory()) {
-      throw new Error(`CODEX_HOME points to "${envValue}", but that path is not a directory`);
-    }
-    try {
-      return fs.realpathSync(resolved);
-    } catch (err) {
-      throw new Error(`failed to canonicalize CODEX_HOME "${envValue}": ${err?.message || err}`);
-    }
+    throw new Error(`failed to read CODEX_HOME "${rawValue}": ${err?.message || err}`);
   }
 
-  return path.join(os.homedir(), '.codex');
+  if (!stat.isDirectory()) {
+    throw new Error(`CODEX_HOME points to "${rawValue}", but that path is not a directory`);
+  }
+
+  try {
+    return fs.realpathSync(resolved);
+  } catch (err) {
+    throw new Error(`failed to canonicalize CODEX_HOME "${rawValue}": ${err?.message || err}`);
+  }
+}
+
+export function findCodexHome() {
+  const envValue = process.env.CODEX_HOME;
+  if (envValue === undefined || envValue === '') {
+    return path.join(os.homedir(), '.codex');
+  }
+
+  return resolveCodexHome(envValue);
 }
 
 export function getConfigPath() {
