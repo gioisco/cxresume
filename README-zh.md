@@ -6,7 +6,7 @@ cxresume（Codex Resume CLI）
 
 ![Codex Resume TUI – resume Codex sessions, load sessions from history](./ss/sc.png)
 
-Codex Resume（cxresume）是一个用于“继续/恢复 Codex 会话”的命令行/TUI 小工具：从 `~/.codex/sessions` 加载历史记录，并使用 `codex resume <sessionId>` 启动 Codex 让你在原处继续。为了更方便的流程，我们提供两个主要入口：
+Codex Resume（cxresume）是一个用于“继续/恢复 Codex 会话”的命令行/TUI 小工具：从你的 Codex home 会话目录加载历史记录（如果设置了 `CODEX_HOME`，则使用 `$CODEX_HOME/sessions`，否则使用 `~/.codex/sessions`），并使用 `codex resume <sessionId>` 启动 Codex 让你在原处继续。为了更方便的流程，我们提供两个主要入口：
 
 - `cxresume` —— 浏览所有 Codex 历史会话
 - `cxresume cwd` —— 只关注当前工作目录的会话，并把会话 ID 保存到 `.cxresume_sessions`
@@ -55,7 +55,7 @@ Codex Resume（cxresume）是一个用于“继续/恢复 Codex 会话”的命�
 
 - `--list` — 列出最近的会话文件
 - `--open <file>` — 打开具体的 jsonl 文件（相对根目录或绝对路径）
-- `--root <dir>` — 覆盖会话根目录（默认 `~/.codex/sessions`）
+- `--root <dir>` — 覆盖会话根目录（默认 `$CODEX_HOME/sessions` 或 `~/.codex/sessions`）
 - `--codex <cmd>` — 覆盖 Codex 启动命令（默认 `codex`）
 - `--search <text>` — 全量搜索后选择
 - `--legacy-ui` — 旧版单列选择器（无分屏预览）
@@ -83,6 +83,7 @@ Codex Resume（cxresume）是一个用于“继续/恢复 Codex 会话”的命�
 配置
 
 - 配置文件：`~/.config/cxresume/config.json`
+- `logsRoot` 是显式覆盖项；不设置时，cxresume 会在设置了 `CODEX_HOME` 时使用 `$CODEX_HOME/sessions`，否则使用 `~/.codex/sessions`。
 
 ```
 {
